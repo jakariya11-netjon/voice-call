@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Private Share</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f3f7fc;
+            color: #111827;
+        }
+
+        .container {
+            width: 92%;
+            max-width: 600px;
+            margin: 70px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, .10);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 30px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 9px;
+        }
+
+        input {
+            width: 100%;
+            height: 48px;
+            border: 1px solid #d4dce7;
+            border-radius: 10px;
+            padding: 0 14px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #2876df;
+        }
+
+        button {
+            height: 48px;
+            border: 0;
+            border-radius: 10px;
+            padding: 0 18px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .generate {
+            width: 100%;
+            margin-top: 14px;
+            background: #2876df;
+            color: white;
+        }
+
+        .generate:hover {
+            background: #1f65c4;
+        }
+
+        .copy {
+            background: #303030;
+            color: white;
+        }
+
+        .light {
+            background: #edf1f5;
+            color: #111;
+        }
+
+        .danger {
+            background: #c9362b;
+            color: white;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            color: #c62828;
+            margin-top: 12px;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 18px;
+            background: #eefaf2;
+            border-radius: 13px;
+        }
+
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .link-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .link-row input {
+            flex: 1;
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 13px;
+            background: #f3f5f7;
+            border-radius: 10px;
+            color: #475569;
+        }
+
+        .incoming {
+            margin-top: 16px;
+            padding: 18px;
+            border: 1px solid #f1c6c6;
+            background: #fff7f7;
+            border-radius: 12px;
+        }
+
+        .incoming-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .actions button {
+            flex: 1;
+        }
+
+        .call {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid #e8edf2;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        @media(max-width:520px) {
+
+            .container {
+                margin: 30px auto;
+            }
+
+            .card {
+                padding: 22px;
+            }
+
+            .link-row {
+                flex-direction: column;
+            }
+
+            .link-row button {
+                width: 100%;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="card">
+
+            <h1>🎬 Private Share</h1>
+
+            <p class="subtitle">
+                Create a private link for a trusted friend.
+            </p>
+
+            <label>
+                Paste Original Link
+            </label>
+
+            <input id="url" type="url" placeholder="https://youtube.com/...">
+
+            <button id="generate" class="generate">
+                Generate Special Link
+            </button>
+
+            <div id="error" class="error"></div>
+
+
+            <div id="result" class="result hidden">
+
+                <div class="result-title">
+                    Your Special Link
+                </div>
+
+                <div class="link-row">
+
+                    <input id="shareLink" readonly>
+
+                    <button id="copy" class="copy">
+                        Copy Link
+                    </button>
+
+                </div>
+
+
+                <div id="status" class="status">
+                    Waiting for friend...
+                </div>
+
+
+                <div id="incoming" class="incoming hidden">
+
+                    <div class="incoming-title">
+                        Incoming Voice Connection
+                    </div>
+
+                    <div class="actions">
+
+                        <button id="accept" class="generate" style="margin:0">
+                            Accept
+                        </button>
+
+                        <button id="reject" class="light">
+                            Reject
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div id="call" class="call hidden">
+
+                    <div class="actions">
+
+                        <button id="mute" class="light">
+                            Mute
+                        </button>
+
+                        <button id="end" class="danger">
+                            End Call
+                        </button>
+
+                    </div>
+
+                    <audio id="remoteAudio" autoplay controls></audio>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+
+        let socket = null;
+        let shareId = null;
+        let pc = null;
+
+        const $ = id =>
+            document.getElementById(id);
+
+        const rtcConfig = {
+
+            iceServers: [
+
+                {
+                    urls:
+                        "stun:stun.l.google.com:19302"
+                }
+
+            ]
+
+        };
+
+
+        $("generate").onclick =
+            async function () {
+
+                $("error").textContent = "";
+
+                const url =
+                    $("url").value.trim();
+
+                if (!url) {
+
+                    $("error").textContent =
+                        "Please paste an original URL.";
+
+                    return;
+                }
+
+                $("generate").disabled = true;
+
+                $("generate").textContent =
+                    "Generating Special Link...";
+
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/shares",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body: JSON.stringify({
+                                    originalUrl: url
+                                })
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            data.error ||
+                            "Unable to generate link."
+                        );
+                    }
+
+
+                    shareId = data.id;
+
+                    $("shareLink").value =
+                        data.shareUrl;
+
+                    $("result")
+                        .classList
+                        .remove("hidden");
+
+                    $("status").textContent =
+                        "Waiting for friend...";
+
+
+                    connectCreator();
+
+
+                } catch (error) {
+
+                    $("error").textContent =
+                        error.message ||
+                        "Failed to generate link.";
+
+                } finally {
+
+                    $("generate").disabled = false;
+
+                    $("generate").textContent =
+                        "Generate Special Link";
+                }
+
+            };
+
+
+        function connectCreator() {
+
+            socket = io();
+
+
+            socket.on("connect", () => {
+
+                socket.emit(
+                    "creator-register",
+                    {
+                        shareId
+                    }
+                );
+
+            });
+
+
+            socket.on(
+                "receiver-ready",
+                () => {
+
+                    $("status").textContent =
+                        "Friend granted microphone permission.";
+
+                    $("incoming")
+                        .classList
+                        .remove("hidden");
+
+                }
+            );
+
+
+            socket.on(
+                "call-started",
+                () => {
+
+                    $("status").textContent =
+                        "Voice connected.";
+
+                    $("call")
+                        .classList
+                        .remove("hidden");
+
+                }
+            );
+
+
+            socket.on(
+                "webrtc-offer",
+                async ({ offer }) => {
+
+                    await createPeer();
+
+                    await pc.setRemoteDescription(
+                        offer
+                    );
+
+                    const answer =
+                        await pc.createAnswer();
+
+                    await pc.setLocalDescription(
+                        answer
+                    );
+
+                    socket.emit(
+                        "webrtc-answer",
+                        {
+                            shareId,
+                            answer
+                        }
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "webrtc-ice",
+                async ({ candidate }) => {
+
+                    if (!pc || !candidate)
+                        return;
+
+                    try {
+
+                        await pc.addIceCandidate(
+                            candidate
+                        );
+
+                    } catch { }
+
+                }
+            );
+
+
+            socket.on(
+                "receiver-disconnected",
+                () => {
+
+                    endCall();
+
+                    $("status").textContent =
+                        "Friend disconnected. Waiting for friend...";
+
+                }
+            );
+
+
+            socket.on(
+                "call-ended",
+                () => {
+
+                    endCall();
+
+                    $("status").textContent =
+                        "Call ended. Waiting for friend...";
+
+                }
+            );
+
+        }
+
+
+        async function createPeer() {
+
+            pc =
+                new RTCPeerConnection(
+                    rtcConfig
+                );
+
+
+            pc.ontrack =
+                event => {
+
+                    $("remoteAudio").srcObject =
+                        event.streams[0];
+
+                    $("remoteAudio")
+                        .play()
+                        .catch(() => { });
+
+                };
+
+
+            pc.onicecandidate =
+                event => {
+
+                    if (
+                        event.candidate &&
+                        socket
+                    ) {
+
+                        socket.emit(
+                            "webrtc-ice",
+                            {
+                                shareId,
+                                candidate:
+                                    event.candidate
+                            }
+                        );
+
+                    }
+
+                };
+
+        }
+
+
+        $("accept").onclick =
+            function () {
+
+                $("incoming")
+                    .classList
+                    .add("hidden");
+
+                $("status").textContent =
+                    "Connecting...";
+
+                socket.emit(
+                    "call-accepted",
+                    {
+                        shareId
+                    }
+                );
+
+            };
+
+
+        $("reject").onclick =
+            function () {
+
+                $("incoming")
+                    .classList
+                    .add("hidden");
+
+                $("status").textContent =
+                    "Connection rejected. Waiting for friend...";
+
+                socket.emit(
+                    "call-rejected",
+                    {
+                        shareId
+                    }
+                );
+
+            };
+
+
+        $("copy").onclick =
+            async function () {
+
+                try {
+
+                    await navigator.clipboard.writeText(
+                        $("shareLink").value
+                    );
+
+                    $("copy").textContent =
+                        "Copied!";
+
+                    setTimeout(() => {
+
+                        $("copy").textContent =
+                            "Copy Link";
+
+                    }, 1300);
+
+                } catch {
+
+                    $("shareLink").select();
+
+                    document.execCommand(
+                        "copy"
+                    );
+
+                }
+
+            };
+
+
+        $("mute").onclick =
+            function () {
+
+                const audio =
+                    $("remoteAudio");
+
+                audio.muted =
+                    !audio.muted;
+
+                $("mute").textContent =
+                    audio.muted
+                        ? "Unmute"
+                        : "Mute";
+
+            };
+
+
+        $("end").onclick =
+            function () {
+
+                socket.emit(
+                    "call-ended",
+                    {
+                        shareId
+                    }
+                );
+
+                endCall();
+
+                $("status").textContent =
+                    "Call ended. Waiting for friend...";
+
+            };
+
+
+        function endCall() {
+
+            if (pc) {
+
+                pc.close();
+
+                pc = null;
+
+            }
+
+            $("remoteAudio").srcObject =
+                null;
+
+            $("call")
+                .classList
+                .add("hidden");
+
+            $("incoming")
+                .classList
+                .add("hidden");
+
+        }
+
+    </script>
+
+</body>
+
+</html>

