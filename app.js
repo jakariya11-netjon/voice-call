@@ -1,3 +1,4 @@
+```javascript
 // ======================================
 // LIVE VOICE CALL
 // WebRTC + PeerJS
@@ -71,7 +72,8 @@ let muted = false;
 
 function setStatus(message) {
 
-    statusEl.textContent = message;
+    statusEl.textContent =
+        message;
 
 }
 
@@ -108,7 +110,7 @@ function generateRoomId() {
 
 
 // ======================================
-// URL ROOM
+// GET ROOM FROM URL
 // ======================================
 
 function getRoomFromUrl() {
@@ -203,7 +205,9 @@ async function requestMicrophone() {
 
     catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
         throw new Error(
             "Please allow microphone permission."
@@ -220,7 +224,8 @@ async function requestMicrophone() {
 
 function showRoom(room) {
 
-    currentRoom = room;
+    currentRoom =
+        room;
 
     roomIdEl.textContent =
         room;
@@ -450,6 +455,7 @@ function setupCall(call) {
             waitingText.textContent =
                 "Connected. You can talk now.";
 
+
             setStatus(
                 "Connected"
             );
@@ -467,8 +473,10 @@ function setupCall(call) {
             currentCall =
                 null;
 
+
             callState.textContent =
                 "Call ended";
+
 
             setStatus(
                 "Call ended"
@@ -487,6 +495,7 @@ function setupCall(call) {
             console.error(
                 error
             );
+
 
             setStatus(
                 "Voice connection error"
@@ -569,6 +578,7 @@ createBtn.addEventListener(
                 error
             );
 
+
             createBtn.disabled =
                 false;
 
@@ -585,7 +595,7 @@ createBtn.addEventListener(
 
 
 // ======================================
-// JOIN ROOM
+// MANUAL JOIN ROOM
 // ======================================
 
 joinBtn.addEventListener(
@@ -697,6 +707,7 @@ joinBtn.addEventListener(
             console.error(
                 error
             );
+
 
             joinBtn.disabled =
                 false;
@@ -820,6 +831,7 @@ shareBtn.addEventListener(
                     link
                 );
 
+
                 setStatus(
                     "Share link copied!"
                 );
@@ -881,6 +893,7 @@ muteBtn.addEventListener(
             muteBtn.textContent =
                 "🔇 Unmute";
 
+
             setStatus(
                 "Microphone muted"
             );
@@ -891,6 +904,7 @@ muteBtn.addEventListener(
 
             muteBtn.textContent =
                 "🎤 Mute";
+
 
             setStatus(
                 "Microphone on"
@@ -985,28 +999,149 @@ endBtn.addEventListener(
 
 
 // ======================================
-// AUTO JOIN FROM SHARE LINK
+// AUTO RECEIVER FROM SHARE LINK
 // ======================================
 
 window.addEventListener(
     "DOMContentLoaded",
-    () => {
+    async () => {
 
         const room =
             getRoomFromUrl();
 
 
-        if (room) {
+        // Normal homepage
+        if (!room) {
 
-            roomInput.value =
+            return;
+
+        }
+
+
+        console.log(
+            "Room detected:",
+            room
+        );
+
+
+        // Put room ID in input
+        roomInput.value =
+            room;
+
+
+        setStatus(
+            "Incoming call — allow microphone..."
+        );
+
+
+        try {
+
+            // ==================================
+            // 1. REQUEST MICROPHONE
+            // ==================================
+
+            const stream =
+                await requestMicrophone();
+
+
+            // ==================================
+            // 2. CREATE UNIQUE GUEST PEER
+            // ==================================
+
+            const guestId =
+                "guest-" +
+                generateRoomId() +
+                "-" +
+                Date.now();
+
+
+            await createPeer(
+                guestId
+            );
+
+
+            // ==================================
+            // 3. SHOW CALL SCREEN
+            // ==================================
+
+            showRoom(
+                room
+            );
+
+
+            roomIdEl.textContent =
                 room;
 
 
-            setStatus(
-                "Room detected — tap Join"
+            waitingText.textContent =
+                "Connecting to caller...";
+
+
+            callInfo.classList.remove(
+                "hidden"
             );
+
+
+            callState.textContent =
+                "Calling...";
+
+
+            setStatus(
+                "Connecting..."
+            );
+
+
+            // ==================================
+            // 4. AUTOMATIC CALL
+            // ==================================
+
+            const call =
+                peer.call(
+                    room,
+                    stream
+                );
+
+
+            if (!call) {
+
+                throw new Error(
+                    "Could not connect to caller."
+                );
+
+            }
+
+
+            // ==================================
+            // 5. SETUP CALL
+            // ==================================
+
+            setupCall(
+                call
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Auto receiver error:",
+                error
+            );
+
+
+            // Permission denied or connection error
+            setStatus(
+                error.message ||
+                "Please allow microphone permission."
+            );
+
+
+            // Keep room available for manual Join
+            roomInput.value =
+                room;
 
         }
 
     }
 );
+```
