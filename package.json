@@ -1,5 +1,5 @@
 {
-  "name": "private-share",
+  "name": "private-share-backend",
   "version": "1.0.0",
   "private": true,
   "scripts": {
