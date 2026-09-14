@@ -1,995 +1,185 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Private Share</title>
+    <style>
+        * {
+            box-sizing: border-box
+        }
 
-  <title>Private Share Link</title>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background: #eef5ff;
+            color: #17223b;
+            font: 16px system-ui, -apple-system, "Segoe UI", sans-serif
+        }
 
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+        .card {
+            width: min(100%, 540px);
+            padding: 32px;
+            background: #fff;
+            border: 1px solid #dce8f8;
+            border-radius: 18px;
+            box-shadow: 0 12px 35px #a8c4e344
+        }
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-    }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px
+        }
 
-    body {
-      min-height: 100vh;
-      background: #f4f8ff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      color: #172033;
-    }
+        .intro,
+        .status {
+            color: #5d6b82;
+            line-height: 1.5
+        }
 
-    .container {
-      width: 100%;
-      max-width: 520px;
-    }
+        .field {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px
+        }
 
-    .card {
-      background: white;
-      border-radius: 22px;
-      padding: 30px;
-      box-shadow: 0 15px 45px rgba(0, 60, 150, 0.12);
-    }
+        input {
+            min-width: 0;
+            flex: 1;
+            border: 1px solid #cdd9e8;
+            border-radius: 10px;
+            padding: 12px;
+            font: inherit
+        }
 
-    .logo {
-      width: 58px;
-      height: 58px;
-      border-radius: 16px;
-      background: #1769ff;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 28px;
-      margin-bottom: 20px;
-    }
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 12px 16px;
+            background: #1769e0;
+            color: #fff;
+            font: inherit;
+            font-weight: 650;
+            cursor: pointer
+        }
 
-    h1 {
-      font-size: 28px;
-      margin-bottom: 8px;
-    }
+        button:hover {
+            background: #0e59c3
+        }
 
-    .subtitle {
-      color: #697386;
-      line-height: 1.5;
-      margin-bottom: 25px;
-    }
+        button.secondary {
+            background: #e7eef8;
+            color: #284260
+        }
 
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
+        button.danger {
+            background: #d53d4d
+        }
 
-    input {
-      width: 100%;
-      padding: 15px;
-      border: 1px solid #dce2eb;
-      border-radius: 12px;
-      outline: none;
-      font-size: 15px;
-      margin-bottom: 15px;
-    }
+        .output {
+            display: none;
+            margin-top: 24px;
+            padding-top: 22px;
+            border-top: 1px solid #e5edf6
+        }
 
-    input:focus {
-      border-color: #1769ff;
-    }
+        .linkbox {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0 16px
+        }
 
-    button {
-      width: 100%;
-      border: none;
-      padding: 15px;
-      border-radius: 12px;
-      background: #1769ff;
-      color: white;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-    }
+        .linkbox input {
+            background: #f7faff
+        }
 
-    button:hover {
-      background: #0756df;
-    }
+        .error {
+            color: #bd2534;
+            margin-top: 14px
+        }
 
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
+        .call-actions {
+            display: none;
+            gap: 10px;
+            margin-top: 14px
+        }
 
-    .result {
-      display: none;
-      margin-top: 25px;
-      padding-top: 25px;
-      border-top: 1px solid #e8ecf2;
-    }
+        .call-actions button {
+            flex: 1
+        }
 
-    .result.show {
-      display: block;
-    }
+        @media(max-width:480px) {
+            .card {
+                padding: 24px
+            }
 
-    .link-box {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
+            .field,
+            .linkbox {
+                flex-direction: column
+            }
 
-    .link-box input {
-      margin: 0;
-      background: #f7f9fc;
-    }
-
-    .copy-btn {
-      width: auto;
-      min-width: 90px;
-      padding: 0 15px;
-    }
-
-    .status {
-      margin-top: 18px;
-      padding: 13px;
-      border-radius: 10px;
-      background: #f1f6ff;
-      color: #1769ff;
-      font-size: 14px;
-    }
-
-    .incoming {
-      display: none;
-      margin-top: 20px;
-      padding: 20px;
-      border-radius: 15px;
-      background: #fff7e8;
-      border: 1px solid #ffe0a3;
-    }
-
-    .incoming.show {
-      display: block;
-    }
-
-    .incoming h3 {
-      margin-bottom: 8px;
-    }
-
-    .incoming p {
-      color: #6d6251;
-      font-size: 14px;
-      margin-bottom: 15px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .actions button {
-      flex: 1;
-    }
-
-    .reject {
-      background: #e5484d;
-    }
-
-    .reject:hover {
-      background: #c9363b;
-    }
-
-    .call-box {
-      display: none;
-      margin-top: 20px;
-      padding: 20px;
-      border-radius: 15px;
-      background: #edf8f1;
-      border: 1px solid #bce4c8;
-    }
-
-    .call-box.show {
-      display: block;
-    }
-
-    .end-btn {
-      margin-top: 12px;
-      background: #e5484d;
-    }
-
-    .end-btn:hover {
-      background: #c9363b;
-    }
-
-    .small {
-      margin-top: 15px;
-      color: #8a93a3;
-      font-size: 12px;
-      text-align: center;
-      line-height: 1.5;
-    }
-
-    #remoteAudio {
-      display: none;
-    }
-  </style>
+            .field button {
+                width: 100%
+            }
+        }
+    </style>
 </head>
 
 <body>
-
-<div class="container">
-
-  <div class="card">
-
-    <div class="logo">🔗</div>
-
-    <h1>Private Share Link</h1>
-
-    <p class="subtitle">
-      Share a private link and connect through voice.
-    </p>
-
-    <label for="urlInput">Paste your link</label>
-
-    <input
-      id="urlInput"
-      type="url"
-      placeholder="https://youtube.com/... "
-    >
-
-    <button id="generateBtn">
-      Generate Special Link
-    </button>
-
-    <!-- GENERATED LINK -->
-    <div id="result" class="result">
-
-      <label>Your Special Link</label>
-
-      <div class="link-box">
-        <input id="generatedLink" readonly>
-        <button class="copy-btn" id="copyBtn">
-          Copy
-        </button>
-      </div>
-
-      <div id="status" class="status">
-        Waiting for friend...
-      </div>
-
-    </div>
-
-    <!-- INCOMING CALL -->
-    <div id="incoming" class="incoming">
-
-      <h3>🎙️ Incoming Voice Connection</h3>
-
-      <p>
-        Your friend has allowed microphone access.
-        Accept to start the voice connection.
-      </p>
-
-      <div class="actions">
-
-        <button id="acceptBtn">
-          Accept
-        </button>
-
-        <button id="rejectBtn" class="reject">
-          Reject
-        </button>
-
-      </div>
-
-    </div>
-
-    <!-- CALL -->
-    <div id="callBox" class="call-box">
-
-      <h3>🟢 Voice Connected</h3>
-
-      <p style="margin-top:8px;color:#657080;">
-        You are receiving microphone audio.
-      </p>
-
-      <button id="muteBtn" style="margin-top:15px;">
-        Mute
-      </button>
-
-      <button id="endBtn" class="end-btn">
-        End Call
-      </button>
-
-    </div>
-
-    <p class="small">
-      Microphone access is controlled by your browser.
-      Nothing is accessed without permission.
-    </p>
-
-  </div>
-
-</div>
-
-<audio id="remoteAudio" autoplay></audio>
-
-
-<script>
-
-/* =========================================================
-   1. IMPORTANT
-   ========================================================= */
-
-const BACKEND_URL =
-  "https://YOUR-RENDER-APP.onrender.com";
-
-
-/* =========================================================
-   2. VARIABLES
-   ========================================================= */
-
-let socket = null;
-
-let shareId = null;
-
-let peerConnection = null;
-
-let remoteStream = null;
-
-let isMuted = false;
-
-
-/* =========================================================
-   3. HTML ELEMENTS
-   ========================================================= */
-
-const urlInput =
-  document.getElementById("urlInput");
-
-const generateBtn =
-  document.getElementById("generateBtn");
-
-const result =
-  document.getElementById("result");
-
-const generatedLink =
-  document.getElementById("generatedLink");
-
-const copyBtn =
-  document.getElementById("copyBtn");
-
-const statusBox =
-  document.getElementById("status");
-
-const incoming =
-  document.getElementById("incoming");
-
-const acceptBtn =
-  document.getElementById("acceptBtn");
-
-const rejectBtn =
-  document.getElementById("rejectBtn");
-
-const callBox =
-  document.getElementById("callBox");
-
-const muteBtn =
-  document.getElementById("muteBtn");
-
-const endBtn =
-  document.getElementById("endBtn");
-
-const remoteAudio =
-  document.getElementById("remoteAudio");
-
-
-/* =========================================================
-   4. CONNECT SOCKET
-   ========================================================= */
-
-function connectSocket() {
-
-  socket = io(BACKEND_URL, {
-    transports: ["websocket", "polling"]
-  });
-
-
-  socket.on("connect", () => {
-
-    console.log(
-      "Socket connected:",
-      socket.id
-    );
-
-  });
-
-
-  socket.on("connect_error", (error) => {
-
-    console.error(
-      "Socket error:",
-      error
-    );
-
-    statusBox.innerText =
-      "Backend connection error.";
-
-  });
-
-
-  /* -----------------------------------------------
-     FRIEND HAS OPENED SPECIAL LINK
-  ------------------------------------------------ */
-
-  socket.on("friend-connected", () => {
-
-    statusBox.innerText =
-      "Friend opened the link.";
-
-  });
-
-
-  /* -----------------------------------------------
-     FRIEND ALLOWED MICROPHONE
-  ------------------------------------------------ */
-
-  socket.on("receiver-ready", () => {
-
-    statusBox.innerText =
-      "Friend allowed microphone.";
-
-    incoming.classList.add("show");
-
-  });
-
-
-  /* -----------------------------------------------
-     FRIEND REJECTED
-  ------------------------------------------------ */
-
-  socket.on("call-rejected", () => {
-
-    statusBox.innerText =
-      "Voice connection was rejected.";
-
-    incoming.classList.remove("show");
-
-  });
-
-
-  /* -----------------------------------------------
-     CALL STARTED
-  ------------------------------------------------ */
-
-  socket.on("call-started", () => {
-
-    statusBox.innerText =
-      "Voice connection started.";
-
-    callBox.classList.add("show");
-
-  });
-
-
-  /* -----------------------------------------------
-     WEBRTC ANSWER
-  ------------------------------------------------ */
-
-  socket.on("webrtc-answer", async (answer) => {
-
-    if (!peerConnection) return;
-
-    try {
-
-      await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(answer)
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Answer error:",
-        error
-      );
-
-    }
-
-  });
-
-
-  /* -----------------------------------------------
-     ICE CANDIDATE
-  ------------------------------------------------ */
-
-  socket.on("webrtc-ice-candidate", async (candidate) => {
-
-    if (!peerConnection) return;
-
-    try {
-
-      await peerConnection.addIceCandidate(
-        new RTCIceCandidate(candidate)
-      );
-
-    } catch (error) {
-
-      console.error(
-        "ICE error:",
-        error
-      );
-
-    }
-
-  });
-
-
-  /* -----------------------------------------------
-     CALL ENDED
-  ------------------------------------------------ */
-
-  socket.on("call-ended", () => {
-
-    endCall(false);
-
-  });
-
-}
-
-
-/* =========================================================
-   5. GENERATE SPECIAL LINK
-   ========================================================= */
-
-generateBtn.addEventListener(
-  "click",
-  async () => {
-
-    const originalUrl =
-      urlInput.value.trim();
-
-
-    if (!originalUrl) {
-
-      alert(
-        "Please paste a link first."
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      generateBtn.disabled = true;
-
-      generateBtn.innerText =
-        "Generating...";
-
-
-      const response = await fetch(
-        BACKEND_URL + "/api/shares",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            originalUrl:
-              originalUrl
-          })
+    <main class="card">
+        <h1>Private Share</h1>
+        <p class="intro">Create a private link to share content and request a voice connection.</p>
+        <div class="field"><input id="originalUrl" type="url" placeholder="Paste Original Link"
+                autocomplete="url"><button id="generate">Generate Special Link</button></div>
+        <p id="error" class="error" role="alert"></p>
+        <section id="output" class="output"><strong>Your Special Link</strong>
+            <div class="linkbox"><input id="specialLink" readonly><button id="copy" class="secondary">Copy</button>
+            </div>
+            <p id="status" class="status">Waiting for friend...</p>
+            <div id="incoming" class="call-actions"><button id="accept">Accept</button><button id="reject"
+                    class="danger">Reject</button></div>
+            <div id="connected" class="call-actions"><button id="mute" class="secondary">Mute</button><button id="end"
+                    class="danger">End Call</button></div><audio id="remoteAudio" autoplay></audio>
+        </section>
+    </main>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script>
+        // Replace this single value with your Render service URL (without a trailing slash).
+        const BACKEND_URL = "https://YOUR-RENDER-APP.onrender.com";
+        let socket, shareId, peerConnection, muted = false;
+        const $ = id => document.getElementById(id);
+        const status = text => $("status").textContent = text;
+        const setError = text => $("error").textContent = text;
+        const show = (id, visible) => $(id).style.display = visible ? "flex" : "none";
+
+        async function safeJson(response) { const text = await response.text(); try { return { data: JSON.parse(text) }; } catch { return { error: text.trim().startsWith("<") ? "Backend returned HTML instead of JSON. Check your Render URL." : "Backend returned an invalid response." }; } }
+        function connectCreator() {
+            socket = io(BACKEND_URL, { transports: ["websocket", "polling"] });
+            socket.on("connect", () => socket.emit("creator-register", { shareId }));
+            socket.on("connect_error", () => setError("Could not connect to the backend. Check your Render URL."));
+            socket.on("friend-connected", () => status("Friend opened the link."));
+            socket.on("receiver-ready", () => { status("Incoming Voice Connection — Your friend has allowed microphone access."); show("incoming", true); });
+            socket.on("call-rejected", () => { status("Voice connection rejected."); show("incoming", false); });
+            socket.on("webrtc-offer", async ({ offer }) => { try { peerConnection = createPeerConnection(); await peerConnection.setRemoteDescription(offer); const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer); socket.emit("webrtc-answer", { shareId, answer }); status("Connecting..."); } catch { setError("WebRTC connection failed."); endCall(false); } });
+            socket.on("webrtc-ice-candidate", async ({ candidate }) => { try { if (peerConnection && candidate) await peerConnection.addIceCandidate(candidate); } catch { setError("WebRTC connection failed."); } });
+            socket.on("webrtc-answer", async ({ answer }) => { try { await peerConnection?.setRemoteDescription(answer); } catch { setError("WebRTC connection failed."); } });
+            socket.on("call-started", () => { if (!peerConnection) status("Connecting..."); });
+            socket.on("call-ended", ({ reason } = {}) => { closePeer(); show("incoming", false); show("connected", false); status(reason || "Call ended."); });
         }
-      );
-
-
-      const data =
-        await response.json();
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          data.error ||
-          "Could not generate link."
-        );
-
-      }
-
-
-      shareId =
-        data.id;
-
-
-      const specialLink =
-        BACKEND_URL +
-        "/s/" +
-        shareId;
-
-
-      generatedLink.value =
-        specialLink;
-
-
-      result.classList.add("show");
-
-
-      statusBox.innerText =
-        "Waiting for friend...";
-
-
-      /*
-        Connect creator to Socket.IO
-      */
-
-      connectSocket();
-
-
-      /*
-        Tell backend that this socket
-        belongs to the creator.
-      */
-
-      socket.on("connect", () => {
-
-        socket.emit(
-          "creator-register",
-          {
-            shareId: shareId
-          }
-        );
-
-      });
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        "Error: " +
-        error.message
-      );
-
-    } finally {
-
-      generateBtn.disabled = false;
-
-      generateBtn.innerText =
-        "Generate Special Link";
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   6. COPY LINK
-   ========================================================= */
-
-copyBtn.addEventListener(
-  "click",
-  async () => {
-
-    try {
-
-      await navigator.clipboard.writeText(
-        generatedLink.value
-      );
-
-      copyBtn.innerText =
-        "Copied!";
-
-      setTimeout(() => {
-
-        copyBtn.innerText =
-          "Copy";
-
-      }, 1500);
-
-    } catch {
-
-      generatedLink.select();
-
-      document.execCommand(
-        "copy"
-      );
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   7. ACCEPT CALL
-   ========================================================= */
-
-acceptBtn.addEventListener(
-  "click",
-  async () => {
-
-    incoming.classList.remove(
-      "show"
-    );
-
-    callBox.classList.add(
-      "show"
-    );
-
-    statusBox.innerText =
-      "Connecting...";
-
-
-    socket.emit(
-      "call-accepted",
-      {
-        shareId: shareId
-      }
-    );
-
-
-    await createPeerConnection();
-
-  }
-);
-
-
-/* =========================================================
-   8. REJECT CALL
-   ========================================================= */
-
-rejectBtn.addEventListener(
-  "click",
-  () => {
-
-    incoming.classList.remove(
-      "show"
-    );
-
-    statusBox.innerText =
-      "Voice connection rejected.";
-
-    socket.emit(
-      "call-rejected",
-      {
-        shareId: shareId
-      }
-    );
-
-  }
-);
-
-
-/* =========================================================
-   9. CREATE WEBRTC CONNECTION
-   ========================================================= */
-
-async function createPeerConnection() {
-
-  peerConnection =
-    new RTCPeerConnection({
-
-      iceServers: [
-
-        {
-          urls:
-            "stun:stun.l.google.com:19302"
-        }
-
-      ]
-
-    });
-
-
-  /*
-    Friend's microphone audio
-  */
-
-  peerConnection.ontrack =
-    (event) => {
-
-      remoteStream =
-        event.streams[0];
-
-      remoteAudio.srcObject =
-        remoteStream;
-
-      remoteAudio.play()
-        .catch(() => {});
-
-    };
-
-
-  /*
-    ICE candidate
-  */
-
-  peerConnection.onicecandidate =
-    (event) => {
-
-      if (
-        event.candidate &&
-        socket
-      ) {
-
-        socket.emit(
-          "webrtc-ice-candidate",
-          {
-            shareId:
-              shareId,
-
-            candidate:
-              event.candidate
-          }
-        );
-
-      }
-
-    };
-
-
-  /*
-    Connection status
-  */
-
-  peerConnection.onconnectionstatechange =
-    () => {
-
-      console.log(
-        "WebRTC:",
-        peerConnection.connectionState
-      );
-
-
-      if (
-        peerConnection.connectionState ===
-        "connected"
-      ) {
-
-        statusBox.innerText =
-          "Voice connected.";
-
-      }
-
-
-      if (
-        peerConnection.connectionState ===
-        "failed"
-      ) {
-
-        statusBox.innerText =
-          "Connection failed.";
-
-      }
-
-    };
-
-
-  /*
-    Create Offer
-  */
-
-  const offer =
-    await peerConnection.createOffer();
-
-
-  await peerConnection.setLocalDescription(
-    offer
-  );
-
-
-  socket.emit(
-    "webrtc-offer",
-    {
-      shareId:
-        shareId,
-
-      offer:
-        offer
-    }
-  );
-
-}
-
-
-/* =========================================================
-   10. MUTE / UNMUTE
-   ========================================================= */
-
-muteBtn.addEventListener(
-  "click",
-  () => {
-
-    isMuted =
-      !isMuted;
-
-
-    remoteAudio.muted =
-      isMuted;
-
-
-    muteBtn.innerText =
-      isMuted
-        ? "Unmute"
-        : "Mute";
-
-  }
-);
-
-
-/* =========================================================
-   11. END CALL
-   ========================================================= */
-
-endBtn.addEventListener(
-  "click",
-  () => {
-
-    endCall(true);
-
-  }
-);
-
-
-function endCall(sendSignal) {
-
-  if (sendSignal && socket) {
-
-    socket.emit(
-      "call-ended",
-      {
-        shareId:
-          shareId
-      }
-    );
-
-  }
-
-
-  if (peerConnection) {
-
-    peerConnection.close();
-
-    peerConnection =
-      null;
-
-  }
-
-
-  remoteAudio.srcObject =
-    null;
-
-
-  callBox.classList.remove(
-    "show"
-  );
-
-
-  incoming.classList.remove(
-    "show"
-  );
-
-
-  statusBox.innerText =
-    "Call ended.";
-
-}
-
-
-/* =========================================================
-   12. PAGE START
-   ========================================================= */
-
-console.log(
-  "Private Share Link loaded."
-);
-
-</script>
-
+        function createPeerConnection() { const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] }); pc.onicecandidate = e => { if (e.candidate) socket.emit("webrtc-ice-candidate", { shareId, candidate: e.candidate }); }; pc.ontrack = e => { $("remoteAudio").srcObject = e.streams[0]; status("🟢 Voice Connected"); show("incoming", false); show("connected", true); }; pc.onconnectionstatechange = () => { if (pc.connectionState === "failed") { setError("WebRTC connection failed."); endCall(); } }; return pc; }
+        function closePeer() { if (peerConnection) { peerConnection.close(); peerConnection = null; } $("remoteAudio").srcObject = null; }
+        function endCall(notify = true) { closePeer(); show("incoming", false); show("connected", false); status("Call ended."); if (notify && socket) socket.emit("call-ended", { shareId }); }
+        $("generate").onclick = async () => { setError(""); const originalUrl = $("originalUrl").value.trim(); try { new URL(originalUrl); } catch { setError("Please enter a valid URL."); return; } $("generate").disabled = true; try { const response = await fetch(BACKEND_URL + "/api/shares", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ originalUrl }) }); const result = await safeJson(response); if (result.error) throw new Error(result.error); if (!response.ok || !result.data.id) throw new Error(result.data.error || "Could not create the share."); shareId = result.data.id; $("specialLink").value = BACKEND_URL.replace(/\/$/, "") + "/s/" + shareId; $("output").style.display = "block"; status("Waiting for friend..."); connectCreator(); } catch (error) { setError(error.message === "Failed to fetch" ? "Backend is offline or unreachable. Check your Render URL." : error.message); } finally { $("generate").disabled = false; } };
+        $("copy").onclick = async () => { try { await navigator.clipboard.writeText($("specialLink").value); $("copy").textContent = "Copied"; setTimeout(() => $("copy").textContent = "Copy", 1200); } catch { $("specialLink").select(); document.execCommand("copy"); } };
+        $("accept").onclick = () => { show("incoming", false); status("Connecting..."); socket.emit("call-accepted", { shareId }); };
+        $("reject").onclick = () => { show("incoming", false); status("Voice connection rejected."); socket.emit("call-rejected", { shareId }); };
+        $("mute").onclick = () => { muted = !muted; $("remoteAudio").muted = muted; $("mute").textContent = muted ? "Unmute" : "Mute"; };
+        $("end").onclick = () => endCall();
+    </script>
 </body>
+
 </html>
