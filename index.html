@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#111827">
+
+    <title>Live Voice Call</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <main class="card">
+
+        <div class="logo">🎙️</div>
+
+        <h1>Live Voice Call</h1>
+
+        <p class="subtitle">
+            Private 1-to-1 voice call
+        </p>
+
+
+        <!-- STATUS -->
+
+        <div id="status" class="status">
+            Ready
+        </div>
+
+
+        <!-- HOME -->
+
+        <section id="home">
+
+            <button id="createBtn" class="primary">
+                🎙️ Create Call
+            </button>
+
+
+            <div class="divider">
+                <span>OR</span>
+            </div>
+
+
+            <label for="roomInput">
+                Enter Room ID
+            </label>
+
+
+            <div class="join-row">
+
+                <input id="roomInput" type="text" maxlength="6" placeholder="AB12CD" autocomplete="off">
+
+                <button id="joinBtn" class="secondary">
+                    Join
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- ROOM -->
+
+        <section id="roomSection" class="hidden">
+
+            <p class="label">
+                Room ID
+            </p>
+
+
+            <div id="roomId" class="room-code">
+                ------
+            </div>
+
+
+            <button id="copyBtn" class="secondary full">
+                🔗 Copy Share Link
+            </button>
+
+
+            <button id="shareBtn" class="secondary full">
+                📤 Share Link
+            </button>
+
+
+            <p id="waitingText" class="hint">
+                Share the link with the other person.
+            </p>
+
+
+            <!-- CALL STATUS -->
+
+            <section id="callInfo" class="call-info hidden">
+
+                <span id="callState">
+                    Connecting...
+                </span>
+
+            </section>
+
+
+            <!-- CONTROLS -->
+
+            <div class="controls">
+
+                <button id="muteBtn" class="control">
+                    🎤 Mute
+                </button>
+
+
+                <button id="endBtn" class="control danger">
+                    📞 End Call
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <p class="small">
+            Microphone permission is required.
+            GitHub Pages provides HTTPS.
+        </p>
+
+    </main>
+
+
+    <!-- REMOTE AUDIO -->
+
+    <audio id="remoteAudio" autoplay playsinline>
+    </audio>
+
+
+    <!-- PEERJS -->
+
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+    <!-- YOUR JAVASCRIPT -->
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

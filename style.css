@@ -1,0 +1,349 @@
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+    margin: 0;
+
+    min-height: 100vh;
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    background: #111827;
+
+    color: #ffffff;
+}
+
+
+.card {
+
+    width: 100%;
+
+    max-width: 430px;
+
+    padding: 30px;
+
+    border-radius: 22px;
+
+    background: #1f2937;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.35);
+
+    text-align: center;
+}
+
+
+.logo {
+
+    font-size: 52px;
+
+    margin-bottom: 8px;
+}
+
+
+h1 {
+
+    margin: 0;
+
+    font-size: 30px;
+}
+
+
+.subtitle {
+
+    margin: 8px 0 24px;
+
+    color: #cbd5e1;
+
+    font-size: 15px;
+}
+
+
+.status {
+
+    padding: 12px;
+
+    margin-bottom: 20px;
+
+    border-radius: 12px;
+
+    background: #374151;
+
+    color: #e5e7eb;
+
+    font-size: 14px;
+}
+
+
+button {
+
+    border: none;
+
+    border-radius: 12px;
+
+    padding: 14px 18px;
+
+    font-size: 16px;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.1s,
+        opacity 0.1s;
+}
+
+
+button:active {
+
+    transform: scale(0.97);
+}
+
+
+button:disabled {
+
+    opacity: 0.5;
+
+    cursor: not-allowed;
+}
+
+
+.primary {
+
+    width: 100%;
+
+    background: #2563eb;
+
+    color: white;
+
+    font-weight: bold;
+}
+
+
+.secondary {
+
+    background: #4b5563;
+
+    color: white;
+}
+
+
+.full {
+
+    width: 100%;
+
+    margin-top: 10px;
+}
+
+
+.divider {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin: 22px 0;
+
+    color: #9ca3af;
+}
+
+
+.divider::before,
+.divider::after {
+
+    content: "";
+
+    height: 1px;
+
+    flex: 1;
+
+    background: #4b5563;
+}
+
+
+label {
+
+    display: block;
+
+    text-align: left;
+
+    margin-bottom: 8px;
+
+    color: #cbd5e1;
+
+    font-size: 14px;
+}
+
+
+.join-row {
+
+    display: flex;
+
+    gap: 8px;
+}
+
+
+.join-row input {
+
+    min-width: 0;
+
+    flex: 1;
+
+    padding: 14px;
+
+    border: 1px solid #4b5563;
+
+    border-radius: 12px;
+
+    outline: none;
+
+    background: #111827;
+
+    color: white;
+
+    text-transform: uppercase;
+
+    font-size: 16px;
+}
+
+
+.join-row input::placeholder {
+
+    color: #6b7280;
+}
+
+
+.room-code {
+
+    padding: 15px;
+
+    margin-bottom: 10px;
+
+    border-radius: 12px;
+
+    background: #111827;
+
+    font-size: 30px;
+
+    font-weight: bold;
+
+    letter-spacing: 6px;
+}
+
+
+.label {
+
+    text-align: left;
+
+    margin-bottom: 8px;
+
+    color: #cbd5e1;
+}
+
+
+.hint {
+
+    margin-top: 18px;
+
+    color: #cbd5e1;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+}
+
+
+.call-info {
+
+    margin-top: 18px;
+
+    padding: 12px;
+
+    border-radius: 12px;
+
+    background: #065f46;
+
+    color: #ffffff;
+
+    font-weight: bold;
+}
+
+
+.controls {
+
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 22px;
+}
+
+
+.control {
+
+    flex: 1;
+
+    background: #374151;
+
+    color: white;
+}
+
+
+.danger {
+
+    background: #b91c1c;
+}
+
+
+.small {
+
+    margin-top: 22px;
+
+    color: #9ca3af;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+
+.hidden {
+
+    display: none !important;
+}
+
+
+@media (max-width: 380px) {
+
+    .card {
+
+        padding: 22px 18px;
+    }
+
+
+    h1 {
+
+        font-size: 26px;
+    }
+
+
+    .room-code {
+
+        font-size: 25px;
+
+        letter-spacing: 4px;
+    }
+}
